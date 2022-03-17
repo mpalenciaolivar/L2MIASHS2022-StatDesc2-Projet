@@ -4,7 +4,6 @@ pkgLoad <- function( packages = "favourites" ) {
     # Inscrire les packages que vous souhaitez inclure ci-dessous, en respectant
     # le formalisme suivant: c("package1", "package2")
     packages <- c( "readxl" )
-    )
   }
   
   packagecheck <- match( packages, utils::installed.packages()[,1] )
