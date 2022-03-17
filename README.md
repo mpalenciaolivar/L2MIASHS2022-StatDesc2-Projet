@@ -1,56 +1,52 @@
 L2MIASHS2022-StatDesc2-Projet
 ==============================
 
-Template de base pour le rendu du projet de Statistique descriptive 2
+Ce dépôt constitue plusieurs choses à la fois ; il contient :
+- les données à utiliser ;
+- les consignes ;
+- des ressources additionnelles ;
+- un template de base pour le rendu du projet de Statistique descriptive 2.
 
-Project Organization
+Organisation du projet
 ------------
 
     ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` or `make train`
-    ├── README.md          <- The top-level README for developers using this project.
+    ├── README.md          <- Le document que vous consultez actuellement.
     ├── data
-    │   ├── external       <- Data from third party sources.
-    │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
+    │   ├── external       <- Données provenant de sources tierces.
+    │   ├── interim        <- Données transformées, dans un état intermédiaire.
+    │   ├── processed      <- Données à utiliser pour la modélisation.
+    │   └── raw            <- Données originelles.
     │
-    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
+    ├── docs               <- Documents liés au projet.
     │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
+    ├── models             <- Modèles entraînés, sérialisés, prédictions, résumés
     │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
+    ├── notebooks          <- R notebooks. La convention d'appellation est un numéro (pour l'ordre),
+    │                         les initiales du créateur, et une courte description délimitée `-`, par exemple
     │                         `1.0-jqp-initial-data-exploration`.
     │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── references         <- Dictionnaires de données, manuels et tout autre matériel explicatif.
     │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
+    ├── reports            <- Analyses générées sous formes de documents HTML, PDF, LaTeX, etc.
+    │   └── figures        <- Graphiques générés et figures à utiliser dans le rapport.
     │
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
+    ├── requirements.R   <- Les packages/bibliothèques/librairies nécessaires au bon fonctionnement du projet
     │
-    ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
-    ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
-    │   │
-    │   ├── data           <- Scripts to download or generate data
-    │   │   └── make_dataset.py
-    │   │
-    │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
-    │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
-    │   │
-    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │       └── visualize.py
-    │
-    └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
-
+    ├── src                <- Code source.
+        │
+        ├── data           <- Scripts à utiliser pour télécharger/générer les données
+        │   └── make_dataset.py
+        │
+        ├── features       <- Scripts pour passer de la donnée brute aux features
+        │   └── build_features.py
+        │
+        ├── models         <- Scripts pour entraîner les modèles et faire des prédictions
+        │   ├── predict_model.py
+        │   └── train_model.py
+        │
+        └── visualization  <- Scripts pour explorer des données et obtenir des visualisations
+            └── visualize.py
 
 --------
 
