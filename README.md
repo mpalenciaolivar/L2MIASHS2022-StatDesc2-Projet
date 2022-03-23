@@ -5,7 +5,7 @@ Ce dépôt constitue plusieurs choses à la fois ; il contient :
 - les données à utiliser ;
 - les consignes ;
 - des ressources additionnelles ;
-- un template de base pour le rendu du projet de Statistique descriptive 2.
+- un template de base *facultatif* pour le rendu du projet de Statistique descriptive 2.
 
 Organisation du projet
 ------------
@@ -33,20 +33,20 @@ Organisation du projet
     │
     ├── requirements.R   <- Les packages/bibliothèques/librairies nécessaires au bon fonctionnement du projet
     │
-    ├── src                <- Code source.
+    └── src                <- Code source.
         │
         ├── data           <- Scripts à utiliser pour télécharger/générer les données
-        │   └── make_dataset.py
+        │   └── make_dataset.R
         │
         ├── features       <- Scripts pour passer de la donnée brute aux features
-        │   └── build_features.py
+        │   └── build_features.R
         │
         ├── models         <- Scripts pour entraîner les modèles et faire des prédictions
-        │   ├── predict_model.py
-        │   └── train_model.py
+        │   ├── predict_model.R
+        │   └── train_model.R
         │
         └── visualization  <- Scripts pour explorer des données et obtenir des visualisations
-            └── visualize.py
+            └── visualize.R
 
 --------
 
