@@ -36,17 +36,17 @@ Organisation du projet
     └── src                <- Code source.
         │
         ├── data           <- Scripts à utiliser pour télécharger/générer les données
-        │   └── make_dataset.R  <- Ex de script
+        │   └── make_dataset.R  <- Ex de script (pas inclus)
         │
         ├── features       <- Scripts pour passer de la donnée brute aux features
-        │   └── build_features.R  <- Ex de script
+        │   └── build_features.R  <- Ex de script (pas inclus)
         │
         ├── models         <- Scripts pour entraîner les modèles et faire des prédictions
-        │   ├── predict_model.R  <- Ex de script
-        │   └── train_model.R  <- Ex de script
+        │   ├── predict.R  <- Ex de script (pas inclus)
+        │   └── train_model.R  <- Ex de script (pas inclus)
         │
         └── visualization  <- Scripts pour explorer des données et obtenir des visualisations
-            └── visualize.R  <- Ex de script
+            └── visualize.R  <- Ex de script (pas inclus)
 
 --------
 
