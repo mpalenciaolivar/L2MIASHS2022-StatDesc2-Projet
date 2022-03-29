@@ -46,7 +46,7 @@ Organisation du projet
         │   └── train_model.R  <- Ex de script
         │
         └── visualization  <- Scripts pour explorer des données et obtenir des visualisations
-            └── visualize.R
+            └── visualize.R  <- Ex de script
 
 --------
 
