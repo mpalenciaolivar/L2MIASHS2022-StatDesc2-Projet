@@ -18,7 +18,7 @@ Organisation du projet
     │   ├── processed      <- Données à utiliser pour la modélisation.
     │   └── raw            <- Données originelles.
     │
-    ├── docs               <- Documents liés au projet.
+    ├── docs               <- **Documents liés au projet, dont le sujet**
     │
     ├── models             <- Modèles entraînés, sérialisés, prédictions, résumés
     │
