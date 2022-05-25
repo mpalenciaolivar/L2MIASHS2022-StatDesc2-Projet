@@ -16,7 +16,8 @@ pkgLoad <- function( packages = "favourites" ) {
       "psych",
       "ROSE",
       "rpart",
-      "rpart.plot"
+      "rpart.plot",
+      "rWeka"
     )
   }
   
