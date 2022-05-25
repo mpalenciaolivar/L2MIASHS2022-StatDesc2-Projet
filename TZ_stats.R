@@ -99,15 +99,6 @@ table(train$nameOrig)
 #Nous allons aussi enlever les colonnes id et isFlaggedFraud, car comme nous souhaitons construire
 #notre modèle du 0 nous voulons pas que celui-ci se base sur un autre modèle précédant.
 
-train_id <- train$id
-save(train_id, file = 'train_id.csv')
-rm(train_id)
-
-train <- select(train, -1, -5, -8, -12)
-
-#v2
-
-train <- select(train, -1,, -3, -5, -8, -12)
 
 #-----------------------------------------#
 
@@ -221,19 +212,15 @@ train = subset(train, type == "CASH_OUT" | type == "TRANSFER" )
 
 #Nous pouvons vérifier que notre jeu de données continue toujours déséquilibré
 
-table(train$type)
-save(paulo, file = "paulo.csv")
-object.size(train)
-
 #passons à la création des modèles
 #------------------------------------------------#
 
 
-#----------------------Les modèles----
+#----------------------Les modèles-------------------
 
 library(MLmetrics)
 
-#------------------------------------ARBRE DE DÉCISION
+#------------------------------------ARBRE DE DÉCISION-----------
 
 View(train)
 
@@ -241,32 +228,45 @@ View(train)
 library(rpart)
 library(rpart.plot)
 
+#------Préparation des donnees-----#
+
+load('data/processed/train.csv')
+
+train <- select(train, -1, -5, -8, -12)
+
+train$amount <- as.integer(train$amount)
+train$type <- as.factor(train$type)
+train$oldbalanceOrg <- as.integer(train$oldbalanceOrg) 
+train$newbalanceOrig <- as.integer(train$newbalanceOrig)
+train$oldbalanceDest <- as.integer(train$oldbalanceDest)
+train$newbalanceDest <- as.integer(train$newbalanceDest)
+train$isFraud <- as.factor(train$isFraud)
+
+#-------------------Construction du modèle-------------#
 
 dtree <- rpart(isFraud ~ ., data = train, method = 'class')
-save(dtree, file = 'HapinezTree')
+summary(dtree)
 
-load(file = 'data/processed/test.csv')
-load(file = 'models/decision_tree_FINAL')
-load(file = 'da')
+#--------------Evaluation du modèle-----------#
 
-str(test)
+load('data/processed/test.csv')
+load('models/decision_tree_FINAL')
 
-
-
-
-y_pred <- predict(dtree, test, type = 'class')
+dtree_y_pred <- predict(dtree, test, type = 'class')
 y_true <- test$isFraud
 
-dtree_precision <- Precision(y_true, y_pred, positive = 1)
-dtree_recall <- Recall(y_true, y_pred, positive = 1)
-dtree_f1 <- F1_Score(y_true, y_pred, positive = 1)
+dtree_precision <- Precision(y_true, dtree_y_pred, positive = 1)
+dtree_recall <- Recall(y_true, dtree_y_pred, positive = 1)
+dtree_f1 <- F1_Score(y_true, dtree_y_pred, positive = 1)
+dtree_err <- mean(y_true != dtree_y_pred)
 
-err <- mean(train$isFraud != y_pred)
+#Nous avons un f1_score de 0,81, une precision de 0,96 et un taux de recall de 0,71
+#et aussi taux d'erreur de 0,002, ce modèle est donc à retenir  
 
+rpart.plot(dtree, extra = 106)
 
-#Taux d'erreur de plus de 35%, et un F1 score incroyablement bas, notre modèle n'est donc pas à retenir
-
-#On obtient un f1 score plus eleve et un taux d'erreur plus faible quand on enlève la colonne 'type'
+roc.curve(dtree_y_pred, dtree_y_true, plotit = TRUE, add.roc = FALSE, 
+          n.thresholds=100)
 
 
 #---------------------Fine tuning arbre de decision
@@ -291,9 +291,6 @@ rpart.plot(dtree_tuned_fit, extra = 106)
 roc.curve(y_pred, y_true, plotit = TRUE, add.roc = FALSE, 
           n.thresholds=100)
 
-load('data/processed/validation.csv')
-load('models/HapinezTree')
-
 
 y_pred <- predict(dtree_tuned_fit, validation, type = 'class')
 
@@ -306,16 +303,41 @@ dtree_tuned_fit_f1 <- F1_Score(y_true, y_pred, positive = 1)
 
 #---------------------------------------------------#
 
-#-------------------------------------REGRESSION LOGISTIQUE
+#-------------------------------------REGRESSION LOGISTIQUE---------------------
 
 
-glm_fit <- glm(isFraud ~ ., data = train[,-2], family = 'binomial')
+rm(list = ls())
+
+#------Préparation des donnees-----#
+
+load('data/processed/train.csv')
+
+train <- select(train, -1, -5, -8, -12)
+
+train$amount <- as.integer(train$amount)
+train$type <- as.factor(train$type)
+train$oldbalanceOrg <- as.integer(train$oldbalanceOrg) 
+train$newbalanceOrig <- as.integer(train$newbalanceOrig)
+train$oldbalanceDest <- as.integer(train$oldbalanceDest)
+train$newbalanceDest <- as.integer(train$newbalanceDest)
+train$isFraud <- as.factor(train$isFraud)
 
 
-glm_fit <- glm(isFraud ~ type, data = train, family = binomial(logit))
+#-------------------Construction du modèle-------------#
 
-y_pred <- predict(glm_fit,test, type = 'response')
-y_pred <- as.factor(ifelse(y_pred > 0.5, 1, 0))
+
+glm_fit <- glm(isFraud ~ ., data = train, family = binomial(logit))
+summary(glm_fit)
+
+#--------------Evaluation du modèle-----------#
+
+load('data/processed/test.csv')
+
+
+y_true <- test$isFraud
+
+logit_y_pred <- predict(glm_fit,test, type = 'response')
+logit_y_pred <- as.factor(ifelse(y_pred > 0.5, 1, 0))
 
 logit_precision <- Precision(y_true, y_pred, positive = 1)
 logit_recall <- Recall(y_true, y_pred, positive = 1)
@@ -323,107 +345,136 @@ logit_f1 <- F1_Score(y_true, y_pred, positive = 1)
 
 #---------------------------------------------#
 
-#---------------------------------------XGBOOST
 
-install.packages("xgboost")
+
+#------Classification naïve bayésienne---------------------#
+
+rm(list = ls())
+
+#------------Preparation des données---------------#
+
+load('data/processed/train.csv')
+
+train <- select(train, -1, -5, -8, -12)
+
+train$amount <- as.integer(train$amount)
+train$type <- as.factor(train$type)
+train$oldbalanceOrg <- as.integer(train$oldbalanceOrg) 
+train$newbalanceOrig <- as.integer(train$newbalanceOrig)
+train$oldbalanceDest <- as.integer(train$oldbalanceDest)
+train$newbalanceDest <- as.integer(train$newbalanceDest)
+train$isFraud <- as.factor(train$isFraud)
+
+#------------------Construction du modele------------------#
+
+nbClassifier <- naiveBayes(isFraud ~., data = train)
+BNaif <- nbClassifier
+
+summary(BNaif)
+
+#--------------Evaluation du modèle-----------#
+
+load('data/processed/test.csv')
+
+nb_y_pred <- predict(BNaif, test)
+y_true <- test$isFraud
+
+BNaif_precision <- Precision(y_true, nb_y_pred, positive = 1)
+BNaif_recall <- Recall(y_true, nb_y_pred, positive = 1)
+BNaif_f1 <- F1_Score(y_true, nb_y_pred, positive = 1)
+
+roc.curve(y_pred, y_true, plotit = TRUE, add.roc = FALSE, 
+          n.thresholds=100)
+
+#---------------------------------------XGBOOST------------------
+
 library(xgboost)
 
-params <- list(eval_metric = "auc",
-               objective = "binary:logistic")
-
-
-xgb <- xgboost(data = as.matrix(train[,-7]),
-               label = train$isFraud,
-               nrounds = 20,
-               verbose = 1)
-
-View(test[-c(1,3,5,8,12)])
-test_xgb <- select(test, -1,-3,-5,-8,-12)
-
-View(test_xgb)
-str(test_xgb)
-
-test_xgb$amount <- as.integer(test_xgb$amount)
-test_xgb$oldbalanceOrg <- as.integer(test_xgb$oldbalanceOrg) 
-test_xgb$newbalanceOrig <- as.integer(test_xgb$newbalanceOrig)
-test_xgb$oldbalanceDest <- as.integer(test_xgb$oldbalanceDest)
-test_xgb$newbalanceDest <- as.integer(test_xgb$newbalanceDest)
-test_xgb$isFraud <- as.factor(test_xgb$isFraud)
-
-
-
-y_pred <- predict(xgb,as.matrix(test_xgb[,-7]))
-
-
-xgb_precision <- Precision(y_true, y_pred, positive = 1)
-xgb_recall <- Recall(y_true, y_pred, positive = 1)
-xgb_f1 <- F1_Score(y_true, y_pred, positive = 1)
-
-save(xgb, file='xgb')
-
-
-
-str(train)
-
-summary(glm_fit)
-
-oito <- lm(amount ~ ., data = train3)
-
-
-dtree <- rpart(isFraud ~., data = train3, method = "class")
-rpart.plot(dtree, extra = 100)
-
-save(nbClassifier,file="NaifBayes")
-save(dtree,file="Arb_Deci")
-save(train,file = "train_version0")
-
-
-
-
-labels <- train$isFraud
-y <- recode(labels, '0' = 0, "1" = 1)
-xgb <- xgboost(data = data.matrix(credit_card.train[,-31]), 
-               label = y,
-               eta = 0.1,
-               gamma = 0.1,
-               max_depth = 10, 
-               nrounds = 300, 
-               objective = "binary:logistic",
-               colsample_bytree = 0.6,
-               verbose = 0,
-               nthread = 7,
-               set.seed(777)
-)
-xgb_pred <- predict(xgb, data.matrix(credit_card.test))
+#------------Preparation des données---------------#
 
 
 load('data/processed/train.csv')
 
-id_train <- as.data.frame(train$id)
-id_test <- as.data.frame(test$id)
-id_valid <- as.data.frame(validation$id)
-
-sum(duplicated(c(id_train, id_test, id_valid)))
-
-save(train, file = 'train.csv')
-load('')
-
 train <- select(train, -1, -3, -5, -8, -12)
 
 
+train$amount <- as.integer(train$amount)
+train$oldbalanceOrg <- as.integer(train$oldbalanceOrg) 
+train$newbalanceOrig <- as.integer(train$newbalanceOrig)
+train$oldbalanceDest <- as.integer(train$oldbalanceDest)
+train$newbalanceDest <- as.integer(train$newbalanceDest)
+train$isFraud <- as.integer(train$isFraud)
+
+
 X_train = data.matrix(train[,-7])
-y_train = as.data.frame(train[,7])
-
-str(X_train)
-dim(X_train)
-
-View(y_train)
+y_train = as.numeric(train$isFraud)
 
 xgboost_train = xgb.DMatrix(data=X_train, label=y_train)
 
-length(y_train)
+#------------------Construction du modele------------------#
 
-model <- xgboost(data = as.matrix(train),max.depth=3,nrounds=50) 
+xgb <- xgboost(data = X_train, 
+               label = y_train,
+               eta = 0.1,
+               gamma = 0.1,
+               max_depth = 10, 
+               nrounds = 100, 
+               objective = "binary:logistic",
+               colsample_bytree = 0.6,
+               verbose = 1,
+               nthread = 7,
+               set.seed(777)
+)
+
+
+
+xgb <- xgboost(data = X_train, label = y_train,
+        max.depth = 6, eta = 1, nthread = 2, nrounds = 20,
+        eval_metric = "f1_score",
+        objective = "binary:logistic")
+
+summary(xgb)
+
+
+xgb.plot.shap(data = X_train,
+              model = xgb,
+              top_n = 3)
+
+#--------------Evaluation du modèle-----------#
+
+load('data/processed/test.csv')
+
+test <- select(test, -1, -3, -5, -8, -12)
+
+
+test$amount <- as.integer(test$amount)
+test$oldbalanceOrg <- as.integer(test$oldbalanceOrg) 
+test$newbalanceOrig <- as.integer(test$newbalanceOrig)
+test$oldbalanceDest <- as.integer(test$oldbalanceDest)
+test$newbalanceDest <- as.integer(test$newbalanceDest)
+
+
+
+X_test = data.matrix(test[,-7])
+y_test = as.numeric(test$isFraud)
+
+
+xgboost_test = xgb.DMatrix(data=X_test, label=y_test)
+
+
+
+xgb_pred <- predict(xgb, xgboost_test)
+
+y_true <- test$isFraud
+
+
+xgb_precision <- Precision(y_true, xgb_pred, positive = 1)
+xgb_recall <- Recall(y_true, xgb_pred, positive = 1)
+xgb_f1 <- F1_Score(y_true, xgb_pred, positive = 1)
+
+
+roc.curve(xgb_pred, y_true, plotit = TRUE, add.roc = FALSE, 
+          n.thresholds=100)
 
 #ARBRE DE DECISION
 
