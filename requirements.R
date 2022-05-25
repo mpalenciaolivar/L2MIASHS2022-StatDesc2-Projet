@@ -17,7 +17,9 @@ pkgLoad <- function( packages = "favourites" ) {
       "ROSE",
       "rpart",
       "rpart.plot",
-      "rWeka"
+      "splitTools",
+      "ranger",
+      "xgboost"
     )
   }
   

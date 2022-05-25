@@ -27,8 +27,30 @@ set.seed(777)
 
 #Mettre 60% du jeu de donnée dans train
 
+library(splitTools)
+library(ranger)
+
+temp <- partition(is.atomic(temp), p = c(train = 0.6, valid = 0.2, test = 0.2))
+
+temp <- collect(sample_frac(df, 1))
+
+
 
           #Exploration des données--------
+
+
+head(df)
+df$amount <- as.integer(df$amount)
+df$oldbalanceOrg <- as.integer(df$oldbalanceOrg)
+df$oldbalanceDest <- as.integer(df$oldbalanceDest)
+df$newbalanceDest <- as.integer(df$newbalanceDest)
+df$isFraud <- as.factor(df$isFraud)
+df$isFlaggedFraud <- as.factor(df$isFlaggedFraud)
+df$type<-as.factor(df$type)
+df$newbalanceDest <- as.integer(df$newbalanceDest)
+df$newbalanceOrig <- as.integer(df$newbalanceOrig)
+df$oldbalanceDest <- as.integer(df$oldbalanceDest)
+
 
 
 object.size(train)
@@ -54,6 +76,7 @@ train$type<-as.factor(train$type)
 train$newbalanceDest <- as.integer(train$newbalanceDest)
 train$newbalanceOrig <- as.integer(train$newbalanceOrig)
 train$oldbalanceDest <- as.integer(train$oldbalanceDest)
+
 
 
 #Nous allons ensuite effectuer une exploration des données plus precise pour chaque colonne
@@ -206,21 +229,29 @@ object.size(train)
 #------------------------------------------------#
 
 
-#Les modèles----
+#----------------------Les modèles----
 
 library(MLmetrics)
 
-#ARBRE DE DÉCISION
+#------------------------------------ARBRE DE DÉCISION
 
 View(train)
+
+
+library(rpart)
+library(rpart.plot)
 
 
 dtree <- rpart(isFraud ~ ., data = train, method = 'class')
 save(dtree, file = 'HapinezTree')
 
-
-
 load(file = 'data/processed/test.csv')
+load(file = 'models/decision_tree_FINAL')
+load(file = 'da')
+
+str(test)
+
+
 
 
 y_pred <- predict(dtree, test, type = 'class')
@@ -231,19 +262,51 @@ dtree_recall <- Recall(y_true, y_pred, positive = 1)
 dtree_f1 <- F1_Score(y_true, y_pred, positive = 1)
 
 err <- mean(train$isFraud != y_pred)
+
+
 #Taux d'erreur de plus de 35%, et un F1 score incroyablement bas, notre modèle n'est donc pas à retenir
 
 #On obtient un f1 score plus eleve et un taux d'erreur plus faible quand on enlève la colonne 'type'
 
 
-rpart.plot(dtree, extra = 106)
+#---------------------Fine tuning arbre de decision
+
+
+control <- rpart.control(minsplit = 5,
+                         minbucket = 2,
+                         maxdepth = 8,
+                         cp = 0)
+dtree_tuned_fit <- rpart(isFraud ~ ., data = train, method = 'class', control = control)
+
+y_pred <- predict(dtree_tuned_fit, validation, type = 'class')
+
+dtree_tuned_fit_precision <- Precision(y_true, y_pred, positive = 1)
+dtree_tuned_fit_recall <- Recall(y_true, y_pred, positive = 1)
+dtree_tuned_fit_f1 <- F1_Score(y_true, y_pred, positive = 1)
+
+
+
+rpart.plot(dtree_tuned_fit, extra = 106)
 
 roc.curve(y_pred, y_true, plotit = TRUE, add.roc = FALSE, 
           n.thresholds=100)
 
-#---------------------------------------#
+load('data/processed/validation.csv')
+load('models/HapinezTree')
 
-#REGRESSION LOGISTIQUE
+
+y_pred <- predict(dtree_tuned_fit, validation, type = 'class')
+
+
+dtree_tuned_fit_precision <- Precision(y_true, y_pred, positive = 1)
+dtree_tuned_fit_recall <- Recall(y_true, y_pred, positive = 1)
+dtree_tuned_fit_f1 <- F1_Score(y_true, y_pred, positive = 1)
+
+
+
+#---------------------------------------------------#
+
+#-------------------------------------REGRESSION LOGISTIQUE
 
 
 glm_fit <- glm(isFraud ~ ., data = train[,-2], family = 'binomial')
@@ -258,9 +321,9 @@ logit_precision <- Precision(y_true, y_pred, positive = 1)
 logit_recall <- Recall(y_true, y_pred, positive = 1)
 logit_f1 <- F1_Score(y_true, y_pred, positive = 1)
 
-#---------------------#
+#---------------------------------------------#
 
-#XGBOOST
+#---------------------------------------XGBOOST
 
 install.packages("xgboost")
 library(xgboost)
@@ -306,8 +369,6 @@ summary(glm_fit)
 
 oito <- lm(amount ~ ., data = train3)
 
-library(rpart)
-library(rpart.plot)
 
 dtree <- rpart(isFraud ~., data = train3, method = "class")
 rpart.plot(dtree, extra = 100)
@@ -336,16 +397,33 @@ xgb <- xgboost(data = data.matrix(credit_card.train[,-31]),
 xgb_pred <- predict(xgb, data.matrix(credit_card.test))
 
 
-load('data/processed/test.csv')
+load('data/processed/train.csv')
 
-rm(list = ls())
+id_train <- as.data.frame(train$id)
+id_test <- as.data.frame(test$id)
+id_valid <- as.data.frame(validation$id)
 
-train <- temp
+sum(duplicated(c(id_train, id_test, id_valid)))
 
 save(train, file = 'train.csv')
+load('')
+
+train <- select(train, -1, -3, -5, -8, -12)
 
 
+X_train = data.matrix(train[,-7])
+y_train = as.data.frame(train[,7])
 
+str(X_train)
+dim(X_train)
+
+View(y_train)
+
+xgboost_train = xgb.DMatrix(data=X_train, label=y_train)
+
+length(y_train)
+
+model <- xgboost(data = as.matrix(train),max.depth=3,nrounds=50) 
 
 #ARBRE DE DECISION
 
