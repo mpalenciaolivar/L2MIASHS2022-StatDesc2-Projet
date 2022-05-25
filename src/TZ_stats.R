@@ -212,10 +212,6 @@ train = subset(train, type == "CASH_OUT" | type == "TRANSFER" )
 
 #Nous pouvons vérifier que notre jeu de données continue toujours déséquilibré
 
-table(train$type)
-save(paulo, file = "paulo.csv")
-object.size(train)
-
 #passons à la création des modèles
 #------------------------------------------------#
 
@@ -249,7 +245,7 @@ train$isFraud <- as.factor(train$isFraud)
 #-------------------Construction du modèle-------------#
 
 dtree <- rpart(isFraud ~ ., data = train, method = 'class')
-
+summary(dtree)
 
 #--------------Evaluation du modèle-----------#
 
@@ -295,9 +291,6 @@ rpart.plot(dtree_tuned_fit, extra = 106)
 roc.curve(y_pred, y_true, plotit = TRUE, add.roc = FALSE, 
           n.thresholds=100)
 
-load('data/processed/validation.csv')
-load('models/HapinezTree')
-
 
 y_pred <- predict(dtree_tuned_fit, validation, type = 'class')
 
@@ -334,6 +327,12 @@ train$isFraud <- as.factor(train$isFraud)
 
 
 glm_fit <- glm(isFraud ~ ., data = train, family = binomial(logit))
+summary(glm_fit)
+
+#--------------Evaluation du modèle-----------#
+
+load('data/processed/test.csv')
+
 
 y_true <- test$isFraud
 
@@ -346,102 +345,86 @@ logit_f1 <- F1_Score(y_true, y_pred, positive = 1)
 
 #---------------------------------------------#
 
-#---------------------------------------XGBOOST
-
-install.packages("xgboost")
-library(xgboost)
-
-params <- list(eval_metric = "auc",
-               objective = "binary:logistic")
 
 
-xgb <- xgboost(data = as.matrix(train[,-7]),
-               label = train$isFraud,
-               nrounds = 20,
-               verbose = 1)
+#------Classification naïve bayésienne---------------------#
 
-View(test[-c(1,3,5,8,12)])
-train <- select(train, -1,-3,-5,-8,-12)
+rm(list = ls())
 
-View(test_xgb)
-str(test_xgb)
+#------------Preparation des données---------------#
 
+load('data/processed/train.csv')
 
-y_pred <- predict(xgb,as.matrix(test_xgb[,-7]))
+train <- select(train, -1, -5, -8, -12)
 
+train$amount <- as.integer(train$amount)
+train$type <- as.factor(train$type)
+train$oldbalanceOrg <- as.integer(train$oldbalanceOrg) 
+train$newbalanceOrig <- as.integer(train$newbalanceOrig)
+train$oldbalanceDest <- as.integer(train$oldbalanceDest)
+train$newbalanceDest <- as.integer(train$newbalanceDest)
+train$isFraud <- as.factor(train$isFraud)
 
-xgb_precision <- Precision(y_true, y_pred, positive = 1)
-xgb_recall <- Recall(y_true, y_pred, positive = 1)
-xgb_f1 <- F1_Score(y_true, y_pred, positive = 1)
+#------------------Construction du modele------------------#
 
-save(xgb, file='xgb')
+nbClassifier <- naiveBayes(isFraud ~., data = train)
+BNaif <- nbClassifier
 
+summary(BNaif)
 
-
-str(train)
-
-summary(glm_fit)
-
-oito <- lm(amount ~ ., data = train3)
-
-
-dtree <- rpart(isFraud ~., data = train3, method = "class")
-rpart.plot(dtree, extra = 100)
-
-save(nbClassifier,file="NaifBayes")
-save(dtree,file="Arb_Deci")
-save(train,file = "train_version0")
-
-
-
-
-labels <- train$isFraud
-y <- recode(labels, '0' = 0, "1" = 1)
-xgb <- xgboost(data = data.matrix(credit_card.train[,-31]), 
-               label = y,
-               eta = 0.1,
-               gamma = 0.1,
-               max_depth = 10, 
-               nrounds = 300, 
-               objective = "binary:logistic",
-               colsample_bytree = 0.6,
-               verbose = 0,
-               nthread = 7,
-               set.seed(777)
-)
-
+#--------------Evaluation du modèle-----------#
 
 load('data/processed/test.csv')
 
-id_train <- as.data.frame(train$id)
-id_test <- as.data.frame(test$id)
-id_valid <- as.data.frame(validation$id)
+nb_y_pred <- predict(BNaif, test)
+y_true <- test$isFraud
 
-sum(duplicated(c(id_train, id_test, id_valid)))
+BNaif_precision <- Precision(y_true, nb_y_pred, positive = 1)
+BNaif_recall <- Recall(y_true, nb_y_pred, positive = 1)
+BNaif_f1 <- F1_Score(y_true, nb_y_pred, positive = 1)
 
-save(train, file = 'train.csv')
-load('train.csv')
+roc.curve(y_pred, y_true, plotit = TRUE, add.roc = FALSE, 
+          n.thresholds=100)
+
+#---------------------------------------XGBOOST------------------
+
+library(xgboost)
+
+#------------Preparation des données---------------#
 
 
+load('data/processed/train.csv')
 
 train <- select(train, -1, -3, -5, -8, -12)
 
 
+train$amount <- as.integer(train$amount)
+train$oldbalanceOrg <- as.integer(train$oldbalanceOrg) 
+train$newbalanceOrig <- as.integer(train$newbalanceOrig)
+train$oldbalanceDest <- as.integer(train$oldbalanceDest)
+train$newbalanceDest <- as.integer(train$newbalanceDest)
+train$isFraud <- as.integer(train$isFraud)
+
+
 X_train = data.matrix(train[,-7])
 y_train = as.numeric(train$isFraud)
- 
-str(X_train)
-dim(X_train)
-
-View(y_train)
-
-
 
 xgboost_train = xgb.DMatrix(data=X_train, label=y_train)
 
-length(y_train)
+#------------------Construction du modele------------------#
 
-model <- xgboost(data = as.matrix(train),max.depth=3,nrounds=50)
+xgb <- xgboost(data = X_train, 
+               label = y_train,
+               eta = 0.1,
+               gamma = 0.1,
+               max_depth = 10, 
+               nrounds = 100, 
+               objective = "binary:logistic",
+               colsample_bytree = 0.6,
+               verbose = 1,
+               nthread = 7,
+               set.seed(777)
+)
 
 
 
@@ -450,34 +433,39 @@ xgb <- xgboost(data = X_train, label = y_train,
         eval_metric = "f1_score",
         objective = "binary:logistic")
 
-rm(train)
-load('data/processed/validation.csv')
+summary(xgb)
+
 
 xgb.plot.shap(data = X_train,
               model = xgb,
               top_n = 3)
 
-validation
+#--------------Evaluation du modèle-----------#
 
-validation$amount <- as.integer(validation$amount)
-validation$oldbalanceOrg <- as.integer(validation$oldbalanceOrg) 
-validation$newbalanceOrig <- as.integer(validation$newbalanceOrig)
-validation$oldbalanceDest <- as.integer(validation$oldbalanceDest)
-validation$newbalanceDest <- as.integer(validation$newbalanceDest)
+load('data/processed/test.csv')
+
+test <- select(test, -1, -3, -5, -8, -12)
 
 
+test$amount <- as.integer(test$amount)
+test$oldbalanceOrg <- as.integer(test$oldbalanceOrg) 
+test$newbalanceOrig <- as.integer(test$newbalanceOrig)
+test$oldbalanceDest <- as.integer(test$oldbalanceDest)
+test$newbalanceDest <- as.integer(test$newbalanceDest)
 
-X_validation = data.matrix(validation[,-7])
-y_validation = as.numeric(validation$isFraud)
 
 
-xgboost_validation = xgb.DMatrix(data=X_validation, label=y_validation)
+X_test = data.matrix(test[,-7])
+y_test = as.numeric(test$isFraud)
 
-validation <- select(validation, -1, -3, -5, -8, -12)
 
-xgb_pred <- predict(xgb, xgboost_validation)
+xgboost_test = xgb.DMatrix(data=X_test, label=y_test)
 
-y_true <- validation$isFraud
+
+
+xgb_pred <- predict(xgb, xgboost_test)
+
+y_true <- test$isFraud
 
 
 xgb_precision <- Precision(y_true, xgb_pred, positive = 1)

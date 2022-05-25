@@ -25,16 +25,11 @@ df[1,]
 
 set.seed(777)
 
-#Mettre 60% du jeu de donnée dans train
+#Création des jeux de données
 
-library(splitTools)
-library(ranger)
-
-temp <- partition(is.atomic(temp), p = c(train = 0.6, valid = 0.2, test = 0.2))
-
-temp <- collect(sample_frac(df, 1))
-
-
+train <- collect(sample_frac(df, 0.60), replace = FALSE)
+test  <- collect(sample_frac(df, 0.20), replace = FALSE)
+train <- collect(sample_frac(df, 0.20), replace = FALSE)
 
           #Exploration des données--------
 
@@ -216,11 +211,12 @@ train = subset(train, type == "CASH_OUT" | type == "TRANSFER" )
 #------------------------------------------------#
 
 
-#----------------------Les modèles-------------------
+#-----------------------------LES MODELES---------------------------------------
 
 library(MLmetrics)
+library(ROSE)
 
-#------------------------------------ARBRE DE DÉCISION-----------
+#------------------------------------ARBRE DE DÉCISION--------------------------
 
 View(train)
 
@@ -228,7 +224,7 @@ View(train)
 library(rpart)
 library(rpart.plot)
 
-#------Préparation des donnees-----#
+#------Préparation des donnees-----------#
 
 load('data/processed/train.csv')
 
@@ -242,12 +238,15 @@ train$oldbalanceDest <- as.integer(train$oldbalanceDest)
 train$newbalanceDest <- as.integer(train$newbalanceDest)
 train$isFraud <- as.factor(train$isFraud)
 
-#-------------------Construction du modèle-------------#
+#-------Construction du modèle-------------#
+
+
 
 dtree <- rpart(isFraud ~ ., data = train, method = 'class')
 summary(dtree)
 
-#--------------Evaluation du modèle-----------#
+#--------------Evaluation du modèle---------#
+
 
 load('data/processed/test.csv')
 load('models/decision_tree_FINAL')
@@ -267,38 +266,6 @@ rpart.plot(dtree, extra = 106)
 
 roc.curve(dtree_y_pred, dtree_y_true, plotit = TRUE, add.roc = FALSE, 
           n.thresholds=100)
-
-
-#---------------------Fine tuning arbre de decision
-
-
-control <- rpart.control(minsplit = 5,
-                         minbucket = 2,
-                         maxdepth = 8,
-                         cp = 0)
-dtree_tuned_fit <- rpart(isFraud ~ ., data = train, method = 'class', control = control)
-
-y_pred <- predict(dtree_tuned_fit, validation, type = 'class')
-
-dtree_tuned_fit_precision <- Precision(y_true, y_pred, positive = 1)
-dtree_tuned_fit_recall <- Recall(y_true, y_pred, positive = 1)
-dtree_tuned_fit_f1 <- F1_Score(y_true, y_pred, positive = 1)
-
-
-
-rpart.plot(dtree_tuned_fit, extra = 106)
-
-roc.curve(y_pred, y_true, plotit = TRUE, add.roc = FALSE, 
-          n.thresholds=100)
-
-
-y_pred <- predict(dtree_tuned_fit, validation, type = 'class')
-
-
-dtree_tuned_fit_precision <- Precision(y_true, y_pred, positive = 1)
-dtree_tuned_fit_recall <- Recall(y_true, y_pred, positive = 1)
-dtree_tuned_fit_f1 <- F1_Score(y_true, y_pred, positive = 1)
-
 
 
 #---------------------------------------------------#
@@ -323,7 +290,7 @@ train$newbalanceDest <- as.integer(train$newbalanceDest)
 train$isFraud <- as.factor(train$isFraud)
 
 
-#-------------------Construction du modèle-------------#
+#----------Construction du modèle-------------#
 
 
 glm_fit <- glm(isFraud ~ ., data = train, family = binomial(logit))
@@ -347,7 +314,7 @@ logit_f1 <- F1_Score(y_true, y_pred, positive = 1)
 
 
 
-#------Classification naïve bayésienne---------------------#
+#------CLASSIFICATION NAIVE BAYESIENNE------------------------------------------
 
 rm(list = ls())
 
@@ -386,9 +353,10 @@ BNaif_f1 <- F1_Score(y_true, nb_y_pred, positive = 1)
 roc.curve(y_pred, y_true, plotit = TRUE, add.roc = FALSE, 
           n.thresholds=100)
 
-#---------------------------------------XGBOOST------------------
+#---------------------------------------XGBOOST---------------------------------
 
 library(xgboost)
+library(dplyr)
 
 #------------Preparation des données---------------#
 
@@ -413,25 +381,15 @@ xgboost_train = xgb.DMatrix(data=X_train, label=y_train)
 
 #------------------Construction du modele------------------#
 
-xgb <- xgboost(data = X_train, 
-               label = y_train,
-               eta = 0.1,
-               gamma = 0.1,
+xgb <- xgboost(data = xgboost_train, 
+               eta = 1,
                max_depth = 10, 
-               nrounds = 100, 
+               nrounds = 30, 
                objective = "binary:logistic",
-               colsample_bytree = 0.6,
+               eval_metric = "auc",
                verbose = 1,
                nthread = 7,
-               set.seed(777)
-)
-
-
-
-xgb <- xgboost(data = X_train, label = y_train,
-        max.depth = 6, eta = 1, nthread = 2, nrounds = 20,
-        eval_metric = "f1_score",
-        objective = "binary:logistic")
+               set.seed(777))
 
 summary(xgb)
 
@@ -446,7 +404,6 @@ load('data/processed/test.csv')
 
 test <- select(test, -1, -3, -5, -8, -12)
 
-
 test$amount <- as.integer(test$amount)
 test$oldbalanceOrg <- as.integer(test$oldbalanceOrg) 
 test$newbalanceOrig <- as.integer(test$newbalanceOrig)
@@ -454,18 +411,11 @@ test$oldbalanceDest <- as.integer(test$oldbalanceDest)
 test$newbalanceDest <- as.integer(test$newbalanceDest)
 
 
-
 X_test = data.matrix(test[,-7])
 y_test = as.numeric(test$isFraud)
 
 
-xgboost_test = xgb.DMatrix(data=X_test, label=y_test)
-
-
-
-xgb_pred <- predict(xgb, xgboost_test)
-
-y_true <- test$isFraud
+xgb_pred <- predict(xgb, X_test)
 
 
 xgb_precision <- Precision(y_true, xgb_pred, positive = 1)
@@ -475,34 +425,3 @@ xgb_f1 <- F1_Score(y_true, xgb_pred, positive = 1)
 
 roc.curve(xgb_pred, y_true, plotit = TRUE, add.roc = FALSE, 
           n.thresholds=100)
-
-#ARBRE DE DECISION
-
-library(rpart)
-library(MLmetrics)
-
-set.seed(777)
-
-#LE MODELE
-dtree <- rpart(isFraud ~ ., data = train, method = 'class')
-
-#EVALUATION DU MODELE
-y_pred <- predict(dtree, train, type = 'class')
-y_true <- train$isFraud
-
-dtree_precision <- Precision(y_true, y_pred, positive = 1)
-dtree_recall <- Recall(y_true, y_pred, positive = 1)
-dtree_f1 <- F1_Score(y_true, y_pred, positive = 1)
-
-paste0("Precision: ", dtree_precision)
-paste0("Recall: ", dtree_recall)
-paste0("F1 Score: ", dtree_f1)
-
-
-#COURBE ROC "arbre de decision"
-library(ROSE)
-
-roc.curve(y_pred, y_true, plotit = TRUE, add.roc = FALSE, 
-          n.thresholds=100)
-
- 
